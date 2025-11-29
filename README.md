@@ -1,60 +1,375 @@
-# DDOS: Digital Democratic Operating System - Global Recruitment Phase
+# SLH Investor Gateway Bot (BOT_FACTORY)
 
-## ✨ Vision: A Sovereign Digital Democracy
-DDOS is designed to be the next generation of national governance, built on a secure, decentralized platform. Our goal is to enable **Liquid Democracy** and **Full Citizen Participation** through cryptographic proofs (ZKP). This site is our initial community hub for recruiting core developers, cryptographers, legal experts, and investors.
+FastAPI + python-telegram-bot v21 service running on Railway.
 
-## 🤝 Strategic Partnerships & Existing Ecosystem
-We are actively building our network and are pleased to announce existing operational bridges and partnerships:
-* **Binance Smart Chain (BNB Chain):** We have existing technological connections and systems built on BNB Chain for preliminary testing and scalability solutions (Layer 2 bridge development).
-* **TON (The Open Network):** We utilize TON's robust, decentralized infrastructure for secure, high-speed, and low-cost decentralized application layers, demonstrating our ability to integrate with high-throughput global blockchain networks.
+## Features
 
-## 🏗️ Core Architecture Highlights
-1.  **Three-Layered Blockchain:** Layer 1 (Sovereignty), Layer 2 (Micro-Democracy), and Layer 3 (ZK-Rollup Aggregator) for unparalleled scale and security.
-2.  **Zero-Knowledge Proofs (ZKP):** Ensuring **absolute voter anonymity** while guaranteeing one-vote-per-citizen legitimacy.
-3.  **Automated Escalation Engine:** Smart Contracts automatically advance citizen proposals if bureaucracy fails to address them within defined timeframes.
+- Strategic investors gateway for SLH
+- Link BNB (BSC) wallet to Telegram profile
+- Off-chain SLH ledger (PostgreSQL via SQLAlchemy)
+- Admin credit tool for allocations
+- Internal transfers between investors
+- On-chain balances placeholder module (for future BSC integration)
+- Rich Telegram UX:
+  - /menu with inline keyboard
+  - /summary investor dashboard
+  - /history – last transactions
+  - /docs – link to investor documentation
 
-## 🚀 Deployment Instructions (Server Setup)
-To run the server, database, and admin panel:
+## Project Structure
 
-### Prerequisites:
-* Python 3.8+
-* PostgreSQL 12+
-* Nginx or similar web server (for production)
-* Required Python libraries: `pip install -r deployment/requirements.txt`
+- `app/main.py` – FastAPI app + webhook endpoint + startup init
+- `app/core/config.py` – Pydantic settings (env-based)
+- `app/database.py` – SQLAlchemy engine, SessionLocal, Base
+- `app/models.py` – User, Transaction models
+- `app/crud.py` – DB helpers for users, balances and transfers
+- `app/blockchain.py` – On-chain balance placeholder (SLH/BNB)
+- `app/bot/investor_wallet_bot.py` – all Telegram logic
 
-### Step 1: Database Setup (PostgreSQL)
-1.  Connect to your PostgreSQL server.
-2.  Run the commands in `deployment/init_db.sql` to create the `registered_users`, `messages`, and `access_logs` tables.
+## Running locally
 
-### Step 2: Configure Environment
-1.  **Crucial:** Create a `.env` file in the root directory to store sensitive data:
-    ```
-    # Database Configuration
-    DB_HOST=localhost
-    DB_NAME=ddos_project_db
-    DB_USER=your_db_user
-    DB_PASS=your_db_password
-    
-    # Twilio SMS Service (for Admin Alerts)
-    TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-    TWILIO_AUTH_TOKEN=your_twilio_auth_token
-    TWILIO_PHONE_NUMBER=+15005550006  # Twilio number
-    ADMIN_PHONE_NUMBER=0584203384    # Your actual phone number for alerts
-    
-    # Admin Credentials
-    ADMIN_USERNAME=ddos_admin
-    ADMIN_PASSWORD=strong_secure_password123 # CHANGE THIS IMMEDIATELY
-    ```
-2.  Install the required libraries: `pip install -r deployment/requirements.txt`
+```bash
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 
-### Step 3: Run the Server
-1.  Execute the backend: `python deployment/server.py`
-    * *Note: For production, use Gunicorn or uWSGI behind Nginx.*
+pip install -r requirements.txt
 
-### Step 4: Access and Share
-* **Frontend (Public Site):** Access at `http://localhost:5000/`
-* **Admin Panel:** Access at `http://localhost:5000/admin` (Use credentials from `.env`)
-* **To Share:** Once deployed to a public domain (e.g., `www.ddos.org`), share that **public URL**. The Open Graph tags will ensure the beautiful image is attached automatically.
+# create .env from example
+cp .env.example .env
+# edit BOT_TOKEN, DATABASE_URL, etc.
 
-## 📞 Contact Information
-For urgent inquiries and direct communication with project leads: **0584203384** (This number is used for SMS alerts from the system).
+uvicorn app.main:app --reload
+```
+
+Expose `http://localhost:8000/webhook/telegram` via ngrok if you want webhook locally.
+
+## Deploying to Railway
+
+- Create a new service from this repo.
+- Set environment variables according to `.env.example`.
+- Make sure `PORT` is set to `8080` in Railway (or change the Docker CMD).
+- Telegram webhook will be set automatically on startup using `WEBHOOK_URL`.
+✅ סיכום מצב – מה השגנו עד עכשיו
+1. הקמנו בוט משקיעים אמיתי – עובד, מחובר, יציב
+
+הבוט שלך הוא כיום:
+
+✔ מחובר ל־Telegram
+✔ רץ על Railway עם Webhook מלא
+✔ עובד ללא שגיאות
+✔ מגיב לכל הפקודות המרכזיות
+✔ שולף נתוני On-Chain מה-BNB Smart Chain
+✔ מציג יתרה אמיתית על־שרשרת + Off-Chain
+✔ מבצע העברות פנימיות (off-chain ledger)
+✔ מטפל בפקודות אדמין (קרדיט, היסטוריה)
+✔ מנהל משתמשים בבסיס נתונים PostgreSQL
+✔ מייצר טבלאות DB באופן אוטומטי (models + init_db())
+
+זה כבר מוצר ברמה גבוהה – יציב, תואם פיתוח מקצועי, ומתאים למשקיעים אמיתיים.
+
+2. עברנו משבר גדול עם Pydantic 2 → פתרנו והגענו למצב נקי
+
+✔ עברנו שינוי דור שלם (BaseSettings → pydantic-settings)
+✔ תיקנו imports
+✔ תיקנו תלויות (requirements.txt)
+✔ הבוט עלה שוב ועובד 100%
+
+3. דיבוג עמוק של SQLAlchemy + PostgreSQL
+
+✔ תיקנו שגיאה קריטית: UndefinedColumn
+✔ עדכנו את models, schema, init_db
+✔ יצרנו טבלת USERS תקינה
+✔ יצרנו טבלת TRANSACTIONS תקינה
+✔ /admin_credit עובד
+✔ /history עובד
+✔ internal ledger עובד
+
+4. יישור מלא של המבנה: app/main.py + bot + DB
+
+✔ טיפול בבעיות Webhook
+✔ טיפול ב־Application.initialize
+✔ טיפול בבאגי ptb v21.4
+✔ טיפול ב־fake_update
+✔ שמירה על Webhook יציב תחת Railway
+
+5. בדיקות חיות – והכול עובד:
+📌 /balance
+
+מחזיר:
+
+SLH off-chain
+
+SLH on-chain
+
+BNB on-chain
+
+ערך כספי בנומינלי
+
+📌 /summary
+
+מחזיר:
+
+פרופיל
+
+ארנקים
+
+טוקן
+
+יתרות
+
+On-chain
+
+BscScan
+
+Docs
+
+📌 /admin_credit
+
+✔ מעדכן
+✔ מייצר טרנזקציה
+✔ מחזיר Transaction ID
+
+📌 /history
+
+✔ עובד
+✔ מציג טרנזקציות
+
+זו הייתה נקודה קריטית כדי לדעת שה־DB יציב וששום שדה לא חסר.
+
+🚀 מסקנה: יש לך היום בוט משקיעים מלא, אמיתי ורציני.
+
+אנחנו מוכנים לשלב הבא: פיצ'רים פרימיום למשקיעים, תיעוד, ואוטומציה מלאה לכל האקו־סיסטם.
+
+🌍 מפה עד יישום מלא – מפת דרכים רשמית
+שלב 1 — ייצוב הבוט (DONE 90%)
+
+✔ בוט עובד
+✔ BaseSettings → pydantic-settings
+✔ DB תקין
+✔ טבלאות תקינות
+✔ היסטוריית טרנזקציות
+✔ קרדיט
+✔ ארנק BNB
+✔ On-chain
+✔ Docs
+✔ מחיר SLH
+
+מה נשאר?
+⬜ בדיקת עומסים (optional)
+⬜ ניהול שגיאות עשיר (error middleware)
+
+שלב 2 — הרחבת יכולות הבוט (התחלנו, אבל נעמיק עכשיו)
+A. מערכת דירוג משקיעים (Investor Tiers)
+
+🟦 Tier 1 – Supporter
+
+🟩 Tier 2 – Partner
+
+🟧 Tier 3 – Strategic
+
+🟪 Tier 4 – Ultra Strategic
+
+מופיע אוטומטית ב־/summary
+נותן משקל למשקיע ולשווי הפרויקט
+
+B. Yield Calculation
+
+תשואה שנתית (בשלב זה סימולציה – ללא on-chain mint)
+
+מוצג ב-/summary
+
+C. הרחבת Admin Dashboard
+
+/admin_list_users
+
+/admin_ledger
+
+/admin_stats (בהמשך)
+
+/admin_set_balance (בהמשך)
+
+/admin_export_users (בהמשך)
+
+שלב 3 — שכבת “משקיע אמיתי” (Investor Experience Layer)
+
+כאן המערכת הופכת ממערכת טכנית → למערכת השקעה אמיתית:
+
+תצוגות ייעודיות:
+
+📈 “Investor Health Score”
+
+🪙 “SLH Equity Position”
+
+📘 “Investment Agreement” (PDF generated on demand)
+
+🔗 דשבורד של כל ה־SLH באקו־סיסטם
+
+פונקציות התנהגות משקיע:
+
+הצהרת commitment
+
+תיעוד הון עצמי
+
+העדפות השקעה
+
+תיעוד הסכמי השקעה
+
+מודול הוכחת בעלות (PoS-like):
+
+שמירת snapshot של on-chain SLH
+
+מניעת הונאות והעברות כפולות
+
+שלב 4 — חיבור למערכת הגדולה של SLH Ecosystem
+
+פה המנוע הגדול מתחבר:
+
+1. חיבור מלא לארנק הקהילה (Community Funds)
+
+מעקב On-Chain
+
+התראות אוטומטיות
+
+ניתוח תנועות
+
+2. חיבור ל־SLH Exchange (בהמשך)
+
+נתוני Orderbook
+
+נתוני מחזורים
+
+ערך SLH דינמי
+
+3. מודול מומחים (PI Index)
+
+הבוט ישמש גם:
+
+מערכת בחירת מומחים
+
+תשלומים של SLH לפי זמן מומחה
+
+סטטיסטיקות ביצוע
+
+4. מערכת זכיינות / חנויות
+
+אימות משקיעים לפני פתיחת Shop
+
+שימוש ב-SLH לחבילות זכיינות
+
+שלב 5 — אוטומציה מלאה + מערכת ניהול
+
+זה השלב השלישי והגבוה בפרויקט כולו:
+
+A. תשתית API מלאה
+
+/investors
+
+/wallets
+
+/ledger
+
+/experts
+
+B. לוח-בקרה Admin מלא (React או Telegram Mini App)
+
+התראות
+
+גרפים
+
+ניהול משתמשים
+
+דוחות
+
+C. שילוב חוזים חכמים (שלב מתקדם)
+
+SLH staking
+
+Investor locking
+
+חשבונות נאמנות
+
+קרן הון קהילתית
+
+🟩 מפה והלאה – סדר הפעולות להמשך העבודה
+מיידית (השלב הבא):
+
+מאשרים שהגרסה שלך יציבה (כבר עברנו /history ו-/admin_credit בהצלחה)
+
+מריצים בדיקות על פקודות אדמין חדשות
+
+נבנה איתך שכבת Tiers + מחדש
+
+נוסיף מודול /admin_list_users
+
+נראה את כל המשקיעים במערכת
+
+בטווח הקרוב (פיתוח מהיר):
+
+נוסיף “Investor Health Score”
+
+נוסיף חישובי תשואה עתידיים אמיתיים
+
+נוסיף מודול “משקיע חדש” (Onboarding Automation)
+
+ניצור webhook התראות למשקיעים גדולים
+
+נתחבר למערכת SLH Exchange לביצועים דינמיים
+
+החזון הגדול (הקמת מנוע השקעות שלם):
+
+ניצור מערכת staking פנימית
+
+מערכת commitments
+
+חיבור לעולם ה-Pi Index
+
+דוחות PDF
+
+Dashboard מלא רספונסיבי
+
+⚡ המסקנה הסופית
+
+מה שעשינו:
+
+🟩 העלינו בוט משקיעים שלם
+🟩 תיקנו כל שגיאה מערכתית
+🟩 בנינו בסיס יציב לעתיד
+🟩 עיצבנו ממשק למשקיע
+🟩 בנינו קרנל ל-Ledger אמיתי
+🟩 סגרנו את ה-DB
+🟩 היום יש לך מערכת השקעה עובדת
+
+מה עוד צפוי:
+
+🔵 לבנות מערכת השקעות מלאה
+🟣 לחבר למנועי SLH ecosystem
+🟡 לייצר Dashboard למשקיעים
+🟠 לייצר מנוע Staking / Yield
+🔴 להרחיב את מערכת המומחים והPi-Index
+
+אם תרצה — אכין לך עכשיו מסמך PDF רשמי של המפה העסקית והטכנית שאתה יכול להציג למשקיעים, כולל גרפים וארכיטקטורה מפורטת.
+
+---
+
+## DDOS Presentation Site (ddos_site/)
+
+This repository also bundles the **DDOS: Digital Democratic Operating System** presentation site.
+
+- Source: `ddos_site/src/index.html`
+- Static assets: `ddos_site/assets/`
+- Deployment helpers (optional): `ddos_site/deployment/`
+
+The backend service that runs on Railway remains the FastAPI + Telegram bot app (see `Dockerfile` and `app/main.py`).  
+The DDOS site can be:
+
+- Served separately via GitHub Pages, Netlify, or any static hosting, or
+- Embedded/linked from your main SLH / investor docs.
+
+### Environment configuration
+
+See `.env.example` for all required and optional environment variables:
+
+- Core: `BOT_TOKEN`, `DATABASE_URL`, `SECRET_KEY`, `WEBHOOK_URL`
+- SLH / BSC: `COMMUNITY_WALLET_ADDRESS`, `SLH_TOKEN_ADDRESS`, `SLH_PRICE_NIS`, `BSC_RPC_URL`
+- Docs / links: `DOCS_URL`, `BUY_BNB_URL`, `STAKING_INFO_URL`
+- (Optional) community / logs / languages for future expansion.

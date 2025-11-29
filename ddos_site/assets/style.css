@@ -1,0 +1,43 @@
+/* assets/style.css - סגנון בסיסי */
+body {
+    font-family: 'Arial', sans-serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f9;
+    color: #333;
+    direction: rtl; 
+    text-align: right;
+}
+
+header {
+    background: #4A90E2;
+    color: #ffffff;
+    padding: 1.5em 0;
+    text-align: center;
+    border-bottom: 5px solid #2860A3;
+}
+
+main {
+    padding: 20px;
+    max-width: 900px;
+    margin: 20px auto;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+a {
+    color: #4A90E2;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* סגנון כללי לפאנל האדמין */
+.app-header {
+    background: #2860A3 !important; 
+}
