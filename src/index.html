@@ -3,83 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DDOS | מערכת הפעלה דמוקרטית דיגיטלית</title>
-    <link rel="stylesheet" href="../assets/style.css">
-
-    <meta property="og:title" content="DDOS: Digital Democratic OS - Join the Community">
-    <meta property="og:description" content="A national-scale blockchain project for Liquid Democracy, powered by ZK-Proofs and Strategic Partnerships with Binance/TON. Join us!">
-    <meta property="og:image" content="https://yourdomain.com/assets/ddos_social_share.png"> 
-    <meta property="og:url" content="https://yourdomain.com"> 
-    <meta property="og:type" content="website">
-    <meta property="og:locale" content="he_IL">
-
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="DDOS: Digital Democratic OS - Join the Community">
-    <meta name="twitter:description" content="A national-scale blockchain project for Liquid Democracy, powered by ZK-Proofs and Strategic Partnerships with Binance/TON. Join us!">
-    <meta name="twitter:image" content="https://yourdomain.com/assets/ddos_social_share.png">
+    <title>פרויקט DDOS - השער הראשי</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-
-    <div id="privacy-modal" class="modal">
-        </div>
-
-    <div id="main-content" style="display: none;">
-        <header>
-            <div class="logo">DDOS <span>⟷</span></div>
-            <nav>
-                <a href="#vision">חזון</a>
-                <a href="#architecture">ארכיטקטורה</a>
-                <a href="#join">הצטרפות</a>
-                <a href="#contact">פנייה</a>
-            </nav>
-        </header>
-
-        <section id="hero">
-            <h1>DDOS: הדמוקרטיה נכנסת למאה ה-21.</h1>
-            <p>מערכת ההפעלה הדיגיטלית המאובטחת ביותר בעולם, מבוססת בלוקצ'יין, להשתתפות אזרחית מלאה.</p>
-        </section>
-
-        <section id="stats">
-            </section>
-
-        <section id="architecture">
-            <h2>🏗️ ארכיטקטורה וחדשנות</h2>
-            <p style="font-size: 1.2rem; max-width: 800px; margin: 1rem auto 2rem;">אנו מתכננים מערכת תלת-שכבתית (L1/L2/L3 ZK-Rollup) עם יכולת סילומיות גבוהה. כבר כיום יצרנו קשרי שיתוף פעולה טכנולוגיים עם רשתות **Binance** ו-**TON** לבדיקות ופתרונות Layer 2.</p>
-            <div class="architecture-grid">
-                </div>
-        </section>
-
-        <section id="join">
-            <h2>🤝 הצטרפו כקהילה יוצרת</h2>
-            <p>אנחנו מגייסים מפתחים, קריפטוגרפים, מומחי רגולציה ומשקיעים. הירשמו לקבלת עדכונים.</p>
-            
-            <form id="signup-form">
-                <label for="phone">מספר טלפון (לצורך רישום ועדכונים):</label>
-                <input type="tel" id="phone" name="phone" placeholder="דוגמה: 05X-XXXXXXX" required>
-                <button type="submit">אני בפנים!</button>
-            </form>
-        </section>
-
-        <section id="contact">
-            <h2>✉️ פנייה ישירה לאדמין (הצעות, השקעות)</h2>
-            <p>יש לכם רעיון, הצעת השקעה או רצון להוביל חלק מהפרויקט? פנו אלינו ישירות. **פנייתכם תשלח כהודעת SMS ישירה למנהל.**</p>
-            
-            <form id="contact-form" style="max-width: 500px; margin: 2rem auto;">
-                <input type="text" id="contact-name" name="name" placeholder="שם מלא / חברה" required style="width: 100%; padding: 0.8rem; margin-bottom: 1rem; border-radius: 5px;"><br>
-                <input type="email" id="contact-email" name="email" placeholder="אימייל ליצירת קשר" required style="width: 100%; padding: 0.8rem; margin-bottom: 1rem; border-radius: 5px;"><br>
-                <textarea id="contact-message" name="message" placeholder="תוכן ההודעה (לדוגמה: 'מעוניין להשקיע ב-L3 Rollup')" required style="width: 100%; padding: 0.8rem; margin-bottom: 1rem; border-radius: 5px; height: 120px;"></textarea><br>
-                <button type="submit">שלח פנייה (Alert)</button>
-            </form>
-
-            <p class="contact-info">
-                **ליצירת קשר מיידית עם מנהלי הפרויקט: 0584203384**
-            </p>
-        </section>
-
-        <footer>
-            </footer>
-    </div>
-
-    <script src="../src/app.js"></script>
+    <header>
+        <h1>ברוכים הבאים לפורטל DDOS/NDFS</h1>
+    </header>
+    <main>
+        <h2>דמוקרטיה נזילה וכלכלה דיגיטלית</h2>
+        <p>
+            המערכת משלבת את עקרונות ה-**NDFS** (מטבע דיגיטלי) ו-**DDOS** (דירוג אזרחי/דמוקרטיה נזילה), תוך שימוש ב-Zero-Knowledge Proofs לשמירה על אנונימיות מלאה.
+        </p>
+        <p>
+            <a href="{{ url_for('admin.index') }}">כניסה ללוח בקרה אדמין</a> - כאן תוכל לראות ולנהל את הנתונים הנשלחים מהמשתמשים ומהבוט.
+        </p>
+        <p>
+            **חיבור לטלגרם:** כדי לחבר את הבוט, חפש אותו בטלגרם (לפי השם שבחרת ב-@BotFather) והקלד: `/start`.
+        </p>
+    </main>
 </body>
 </html>
