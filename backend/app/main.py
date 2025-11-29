@@ -4,70 +4,83 @@ import httpx
 
 from .settings import settings
 
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description=(
         "שירות Enterprise עבור SLH DDOS × BOT_FACTORY: "
         "API פרזנטטיבי שמרכז את הארכיטקטורה, החזון, ומצב האינטגרציה אל BOT_FACTORY."
     ),
-    version="0.2.0",
+    version=settings.VERSION,
 )
 
 
-@app.get("/", tags=["meta"])
-async def root():
-    return {
-        "project": settings.PROJECT_NAME,
-        "environment": settings.ENVIRONMENT,
-        "public_base_url": settings.PUBLIC_BASE_URL,
-        "docs_url": settings.DOCS_URL,
-        "message": "DDOS Enterprise Pack backend is running.",
-    }
+@app.get("/health", tags=["system"])
+async def health() -> dict:
+    """בדיקת חיים בסיסית עבור Railway / ניטור.
 
-
-@app.get("/health", tags=["meta"])
-async def health():
-    return {"status": "ok"}
+    מחזיר:
+        dict: אובייקט קטן שמסמן שהשירות חי.
+    """
+    return {"status": "ok", "service": settings.PROJECT_NAME, "version": settings.VERSION}
 
 
 @app.get("/ddos/summary", tags=["ddos"])
-async def ddos_summary():
+async def ddos_summary() -> dict:
+    """סיכום קצר של DDOS למשקיעים / אינטגרציה.
+
+    זה Endpoint סטטי שמאפשר לאתרים, מצגות וכלי BI לשלוף תיאור
+    טקסטואלי ותמציתי של הרעיון.
+    """
     return {
-        "vision": "Digital Democratic Operating System למדינה וקהילות, עם ZKP, Escalation ו-NDFS.",
-        "layers": [
-            "Layer 1 – DDOS Main Chain (Permissioned Consortium, PoS/DPoS)",
-            "Layer 2 – Micro-Democracy & Sub-Chains (ועדי בתים/שכונות/קהילות)",
-            "Layer 3 – ZK-Rollups / Aggregation Layer לאיגום הצבעות וטרנזקציות",
+        "project": "DDOS – Digital Democratic Operating System",
+        "highlights": [
+            "Permissioned Consortium Blockchain עם ZKP להצבעות אנונימיות וחד-פעמיות",
+            "מנוע Escalation חכם שמעלה נושאים שלא טופלו במדרג הממשלתי",
+            "Micro-Democracy – ניהול ועדי בתים/שכונות/ערים בערוצי משנה (Sub-Chains)",
+            "שכבת כספים NDFS – כסף מתוכנת לרווחה, יוקר מחיה וקצבאות מותנות",
         ],
-        "modules": [
-            "ID & ZKP Management – זהות ריבונית ואנונימית",
-            "Escalation Engine – מנגנון מדרג וניטוב נושאים אוטומטי",
-            "Micro-Democracy – ניהול ועדי בתים/רחובות/שכונות",
-            "NDFS – National Digital Fiduciary System (כסף מתוכנת)",
-        ],
+        "docs": {
+            "executive_summary": str(settings.DOCS_URL).rstrip("/") + "/executive_summary.html",
+            "architecture": str(settings.DOCS_URL).rstrip("/") + "/ddos_architecture.html",
+        },
     }
 
 
 @app.get("/ddos/investor_flow", tags=["ddos"])
-async def ddos_investor_flow():
+async def ddos_investor_flow() -> dict:
+    """תיאור מסלול משקיע: מהבוט בטלגרם ועד קריאת ה-API.
+
+    זה Endpoint דוקומנטרי בלבד – הוא לא מחזיק מידע אישי, אלא Flow לוגי
+    שהאתר / חומרים למשקיעים יכולים להציג.
+    """
     return {
         "steps": [
-            "1. משקיע נכנס לבוט BOT_FACTORY ומבצע /start.",
-            "2. המשקיע מקשר כתובת BNB באמצעות /link_wallet.",
-            "3. אדמין מקצה SLH Off-Chain (לדוגמה, /admin_credit).",
-            "4. /balance ו-/summary מציגים On-Chain + Off-Chain.",
-            "5. בעתיד, DDOS יציג את השפעת המדיניות/הצבעות על הארנק (NDFS).",
+            "המשקיע נכנס לבוט המשקיעים בטלגרם ומבצע /start.",
+            "המשקיע מקשר כתובת BNB (BSC) באמצעות /link_wallet.",
+            "בצד השרת, BOT_FACTORY מקליט את ההשקעה ומקצה SLH Off-Chain.",
+            "שירות ה-DDOS Enterprise יכול לשאוב בעתיד נתוני Aggregation / מדדים ויזואליים.",
+            "בדשבורד ה-DDOS / האתר, המשקיע רואה איך החלטות מדיניות מתחברות לזרימת ההון.",
         ],
-        "note": "API זה מדמה את הזרימה, וניתן להרחיבו כדי למשוך נתונים אמיתיים מבוט BOT_FACTORY והשרת הקיים.",
+        "bot_factory_hint": "האינטגרציה בפועל נעשית בבוט וב-DB, כאן זו שכבת תיעוד ו-API read-only.",
     }
 
 
 @app.get("/integrations/bot_factory/status", tags=["integrations"])
-async def bot_factory_status():
-    if not settings.BOT_FACTORY_BASE_URL:
-        raise HTTPException(status_code=503, detail="BOT_FACTORY_BASE_URL is not configured")
+async def bot_factory_status() -> dict:
+    """פינג לבריאות שירות BOT_FACTORY (אם הוגדר URL).
 
-    url = f"{settings.BOT_FACTORY_BASE_URL.rstrip('/')}/health"
+    אם BOT_FACTORY_BASE_URL לא מוגדר, מחזירים תשובה אינפורמטיבית
+    כדי שה-Frontend ידע להציג הודעה עדינה.
+    """
+    if not settings.BOT_FACTORY_BASE_URL:
+        return {
+            "integration": "bot_factory",
+            "configured": False,
+            "message": "BOT_FACTORY_BASE_URL לא הוגדר ב-Environment – אין בדיקת בריאות חיה.",
+        }
+
+    url = str(settings.BOT_FACTORY_BASE_URL).rstrip("/") + "/health"
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             r = await client.get(url)
@@ -77,9 +90,11 @@ async def bot_factory_status():
             body = r.text
         return {
             "integration": "bot_factory",
+            "configured": True,
             "target": url,
             "status_code": r.status_code,
             "body": body,
         }
     except Exception as exc:  # pragma: no cover
+        # שומרים על שגיאה רכה – 502 – כדי ש-Nginx / Railway יבינו שזה בעיית אינטגרציה בלבד.
         raise HTTPException(status_code=502, detail=f"Error calling BOT_FACTORY health: {exc!r}")
