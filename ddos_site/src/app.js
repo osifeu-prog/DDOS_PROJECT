@@ -1,70 +1,61 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // ... (משתנים גלובליים נשארים זהים) ...
-    const signupForm = document.getElementById('signup-form');
-    const contactForm = document.getElementById('contact-form'); // טופס חדש
+  // ===== Bubbles canvas animation (soda-style background) =====
+  const canvas = document.getElementById('bubbles-canvas');
+  if (canvas) {
+    const ctx = canvas.getContext('2d');
+    let width, height;
+    const bubbles = [];
 
-    // ... (לוגיקת מודאל ו-logUserEntry נשארות זהות) ...
+    function resize() {
+      width = canvas.width = canvas.offsetWidth;
+      height = canvas.height = canvas.offsetHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
 
-    acceptBtn.addEventListener('click', () => {
-        if (consentCheck.checked) {
-            modal.style.display = 'none';
-            mainContent.style.display = 'block';
-            logUserEntry();
-            updateStatsDisplay(); 
+    function createBubble() {
+      const radius = Math.random() * 8 + 4;
+      return {
+        x: Math.random() * width,
+        y: height + radius + Math.random() * height * 0.2,
+        radius,
+        speed: Math.random() * 0.5 + 0.3,
+        drift: (Math.random() - 0.5) * 0.3,
+        alpha: Math.random() * 0.4 + 0.2,
+      };
+    }
+
+    for (let i = 0; i < 80; i++) {
+      bubbles.push(createBubble());
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, width, height);
+      for (let b of bubbles) {
+        b.y -= b.speed;
+        b.x += b.drift;
+        if (b.y + b.radius < -10 || b.x < -50 || b.x > width + 50) {
+          Object.assign(b, createBubble());
         }
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 255, 255, ${b.alpha})`;
+        ctx.fill();
+      }
+      requestAnimationFrame(draw);
+    }
+    draw();
+  }
+
+  // ===== Smooth scroll for internal links =====
+  document.querySelectorAll('a[href^="#"]').forEach(link => {
+    link.addEventListener('click', event => {
+      const targetId = link.getAttribute('href').slice(1);
+      const target = document.getElementById(targetId);
+      if (target) {
+        event.preventDefault();
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     });
-
-    // 1. לוגיקה לרישום משתמשים (מספר טלפון)
-    signupForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const phoneInput = document.getElementById('phone').value;
-        
-        fetch('/api/register', {
-            method: 'POST',
-            // ... (שליחה ל-Backend) ...
-        })
-        .then(response => {
-            if (response.status === 201) {
-                alert('תודה שנרשמתם! ניצור קשר בהקדם.');
-                signupForm.reset();
-                updateStatsDisplay();
-            } else {
-                alert('שגיאה ברישום או שהמספר כבר רשום. אנא נסו שוב.');
-            }
-        })
-        .catch(error => {
-            console.error('Registration error:', error);
-            alert('שגיאת רשת. אנא ודאו את החיבור.');
-        });
-    });
-
-    // 2. לוגיקה לשליחת הודעה לאדמין
-    contactForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const name = document.getElementById('contact-name').value;
-        const email = document.getElementById('contact-email').value;
-        const message = document.getElementById('contact-message').value;
-
-        fetch('/api/message', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, email, message }),
-        })
-        .then(response => {
-            if (response.status === 201) {
-                alert('הפנייה נשלחה בהצלחה! האדמין קיבל התראה.');
-                contactForm.reset();
-            } else {
-                alert('שגיאה בשליחת הפנייה. אנא נסו שוב.');
-            }
-        })
-        .catch(error => {
-            console.error('Message submission error:', error);
-            alert('שגיאת רשת בשליחת הפנייה.');
-        });
-    });
-
-    // ... (שאר הלוגיקות נשארות זהות) ...
-
-    modal.style.display = 'flex';
+  });
 });

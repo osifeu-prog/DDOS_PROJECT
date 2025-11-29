@@ -42,6 +42,10 @@ class Settings(BaseSettings):
     # לינק לדפי DOCS של המשקיעים (GitHub Pages וכו')
     DOCS_URL: str | None = None
 
+
+    # שפה ברירת מחדל ותמיכת שפות (למסכים רב־לשוניים בבוט)
+    DEFAULT_LANGUAGE: str = "he"
+    SUPPORTED_LANGUAGES: str | None = None
     # מספר דצימלים של טוקן SLH ברשת (לפי החוזה – כרגע הגדרנו 15 ב-ENV)
     SLH_TOKEN_DECIMALS: int = 18
 

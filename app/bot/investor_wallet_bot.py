@@ -14,6 +14,7 @@ from telegram.ext import (
 from sqlalchemy import or_
 
 from app.core.config import settings
+from app.bot.i18n import detect_lang, t
 from app.database import SessionLocal
 from app import models, crud, blockchain
 
@@ -183,9 +184,15 @@ class InvestorWalletBot:
         balance = user.balance_slh or Decimal("0")
         has_wallet = bool(user.bnb_address)
 
+        lang = detect_lang(update)
+
         text_lines = []
 
-        text_lines.append("Welcome to the SLH Investor Gateway.")
+        text_lines.append(t(lang, "start_title"))
+        text_lines.append("")
+        text_lines.append(
+            t(lang, "start_subtitle")
+        )
         text_lines.append("")
         text_lines.append(
             f"This bot is intended for strategic investors (minimum {min_invest:,.0f} ILS)."
@@ -248,8 +255,9 @@ class InvestorWalletBot:
         """
         תפריט הכפתורים הראשי למשקיע.
         """
+        lang = detect_lang(update)
         await update.message.reply_text(
-            "SLH Investor Menu – choose an action:",
+            t(lang, "menu_title"),
             reply_markup=self._main_menu_keyboard(),
         )
 
