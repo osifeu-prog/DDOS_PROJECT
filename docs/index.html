@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <title>DDOS × BOT_FACTORY – שער רשמי למשקיעים וקהילות</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <meta name="description" content="DDOS – Digital Democratic Operating System מחובר ל-SLH BOT_FACTORY: בוט טלגרם למשקיעים, ארנק קהילתי, חיבור ל-BNB Smart Chain ותיעוד למשקיעים.">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-content">
+      <h1>SLH DDOS × BOT_FACTORY</h1>
+      <p class="subtitle">
+        מערכת הפעלה דמוקרטית דיגיטלית + מפעל בוטים וארנק קהילתי למשקיעים, קהילות ועסקים.
+      </p>
+      <div class="hero-actions">
+        <a href="#ddos" class="btn primary">להכיר את DDOS</a>
+        <a href="#bot-factory" class="btn secondary">להכיר את BOT_FACTORY</a>
+        <a href="#links" class="btn outline">קישורים חיים (בוט / API)</a>
+      </div>
+    </div>
+    <canvas id="bubbles-canvas"></canvas>
+  </header>
+
+  <main id="main-content">
+    <section id="ddos">
+      <h2>מה זה DDOS?</h2>
+      <p>
+        DDOS (Digital Democratic Operating System) היא תשתית דיגיטלית למדינה/קהילה:
+        זהויות מאובטחות, הצבעות מוצפנות, מנוע Escalation שמעלה נושאים מלמטה למעלה,
+        ושקיפות מלאה על קבלת החלטות – על גבי בלוקצ'יין קונסורציום.
+      </p>
+      <p>
+        המערכת בנויה בשכבות: תשתית, לוגיקה עסקית, שירותים (APIs) וממשקי משתמש (אפליקציות, אתרים ובוטים).
+        BOT_FACTORY הוא אחד הממשקים הראשונים המחוברים לאקו־סיסטם הזה.
+      </p>
+    </section>
+
+    <section id="bot-factory">
+      <h2>BOT_FACTORY – שער המשקיעים</h2>
+      <p>
+        BOT_FACTORY הוא שירות FastAPI + Telegram Bot שרץ על Railway ומחובר לרשת
+        BNB Smart Chain. הוא מאפשר:
+      </p>
+      <ul>
+        <li>קישור כתובת BNB / SLH לפרופיל טלגרם</li>
+        <li>ניהול יתרות Off-Chain (DB) מול קריאות On-Chain לכתובת הקהילה</li>
+        <li>תפריט משקיעים עם פקודות כמו <code>/wallet</code>, <code>/balance</code>, <code>/history</code></li>
+        <li>ניהול משקיעים (admin) עם <code>/admin_credit</code> וכו'</li>
+      </ul>
+      <p>
+        דפי התיעוד המלאים (Whitepaper / Investor Docs) יכולים לשבת בריפו זה, באתר חיצוני,
+        או בדפי GitHub Pages נוספים. דף זה נועד לשמש כשער ראשוני ברור.
+      </p>
+    </section>
+
+    <section id="links">
+      <h2>קישורים חיים – בוט / API / תיעוד</h2>
+      <p>
+        את הקישורים האלו תתאים ידנית בהתאם לפריסה בפועל (Railway, דומיין מותאם, שם הבוט בטלגרם וכו').
+      </p>
+      <div class="grid">
+        <article class="card">
+          <h3>בוט טלגרם – שער המשקיעים</h3>
+          <p>
+            קישור ישיר לבוט המשקיעים בטלגרם. עדכן כאן את שם המשתמש של הבוט (username).
+          </p>
+          <p>
+            <a href="https://t.me/YOUR_BOT_USERNAME" target="_blank" rel="noopener" class="btn secondary">
+              פתיחת הבוט בטלגרם
+            </a>
+          </p>
+        </article>
+
+        <article class="card">
+          <h3>API / Backend על Railway</h3>
+          <p>
+            כתובת ה-Base של שירות ה-API (FastAPI + Webhook) שרץ על Railway או שרת אחר.
+          </p>
+          <p>
+            <a href="https://tease-production.up.railway.app" target="_blank" rel="noopener" class="btn secondary">
+              פתיחת ה-API / דף בית
+            </a>
+          </p>
+        </article>
+
+        <article class="card">
+          <h3>תיעוד טכני ומשקיעים</h3>
+          <p>
+            כאן אפשר לקשר ל-README טכני, מסמך משקיעים, מצגת או דף GitHub Pages נוסף.
+          </p>
+          <p>
+            <a href="https://github.com/osifeu-prog/DDOS_PROJECT" target="_blank" rel="noopener" class="btn secondary">
+              פתיחת ריפו DDOS_PROJECT
+            </a>
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <section id="next">
+      <h2>איך להשתמש בשער הזה?</h2>
+      <ol>
+        <li>להתאים את הקישורים לחיים האמיתיים (שם הבוט, דומיין, דפי Docs).</li>
+        <li>להפעיל GitHub Pages על התיקייה <code>docs/</code> ב-branch הראשי.</li>
+        <li>לשלוח את הקישור למשקיעים, קהילות ושותפים.</li>
+      </ol>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

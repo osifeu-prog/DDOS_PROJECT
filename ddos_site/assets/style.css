@@ -1,0 +1,163 @@
+/* assets/style.css - סגנון בסיסי */
+body {
+    font-family: 'Arial', sans-serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f9;
+    color: #333;
+    direction: rtl; 
+    text-align: right;
+}
+
+header {
+    background: #4A90E2;
+    color: #ffffff;
+    padding: 1.5em 0;
+    text-align: center;
+    border-bottom: 5px solid #2860A3;
+}
+
+main {
+    padding: 20px;
+    max-width: 900px;
+    margin: 20px auto;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+a {
+    color: #4A90E2;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* סגנון כללי לפאנל האדמין */
+.app-header {
+    background: #2860A3 !important; 
+}
+
+
+/* Hero section with bubbles canvas */
+.hero {
+    position: relative;
+    overflow: hidden;
+    background: radial-gradient(circle at top left, #4A90E2, #151B3D);
+    color: #fff;
+    padding: 4rem 1.5rem 6rem;
+}
+
+.hero-content {
+    position: relative;
+    z-index: 2;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.hero h1 {
+    font-size: 2.4rem;
+    margin-bottom: 0.5rem;
+}
+
+.hero .subtitle {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    margin-bottom: 1.5rem;
+}
+
+.hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.btn {
+    display: inline-block;
+    padding: 0.7rem 1.4rem;
+    border-radius: 999px;
+    font-size: 0.95rem;
+    font-weight: bold;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    text-decoration: none;
+}
+
+.btn.primary {
+    background: #FFB347;
+    color: #151B3D;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+
+.btn.secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.btn.outline {
+    background: transparent;
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+#bubbles-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.35;
+}
+
+/* Cards + grid styling */
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+
+.card {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 1.2rem 1.4rem;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.card.highlight {
+    border: 1px solid #4A90E2;
+}
+
+.card h3 {
+    margin-top: 0;
+}
+
+section {
+    margin-bottom: 3rem;
+}
+
+/* Responsive tweaks */
+@media (max-width: 600px) {
+    .hero {
+        padding: 3rem 1rem 4rem;
+    }
+    .hero h1 {
+        font-size: 1.9rem;
+    }
+    .hero-actions {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
