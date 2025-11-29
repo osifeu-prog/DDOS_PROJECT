@@ -1,33 +1,30 @@
--- קובץ init_db.sql
--- פקודות SQL ליצירת מסד נתונים PostgreSQL
-
--- טבלת משתמשים רשומים (כולל PII - מספר טלפון)
-CREATE TABLE registered_users (
+-- יצירת טבלת משתמשים (Users)
+CREATE TABLE users (
     id SERIAL PRIMARY KEY,
-    phone_number VARCHAR(15) UNIQUE NOT NULL,
-    registration_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    username VARCHAR(80) UNIQUE NOT NULL,
+    email VARCHAR(120) UNIQUE,
+    password_hash VARCHAR(128) NOT NULL,
+    is_admin BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- טבלת פניות לאדמין (דרך טופס יצירת קשר)
-CREATE TABLE messages (
+-- יצירת טבלת נתונים שהועלו על ידי משתמשים (UploadedData)
+-- כלי מרכזי לפאנל האדמין: לראות את הנתונים שמשתמשים מעלים
+CREATE TABLE uploaded_data (
     id SERIAL PRIMARY KEY,
-    sender_name VARCHAR(255),
-    sender_email VARCHAR(255),
-    content TEXT NOT NULL,
-    access_time TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    ip_address INET -- נשמר לצורך אימות וזיהוי שולח
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    data_type VARCHAR(50) NOT NULL,
+    data_content TEXT, -- יכיל את הנתונים שהועלו (לדוגמה, דירוגים, משוב)
+    status VARCHAR(20) DEFAULT 'Pending',
+    uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- טבלת לוגים מפורטת (נדרש לחוק 13)
-CREATE TABLE access_logs (
+-- יצירת טבלת חיבור לבוט טלגרם (TelegramConnections)
+-- מקשרת בין משתמש מערכת ל-Chat ID בטלגרם
+CREATE TABLE telegram_connections (
     id SERIAL PRIMARY KEY,
-    ip_address INET NOT NULL, -- שומר כתובת IP
-    access_time TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    user_agent TEXT, -- לוג מפורט (סוג מכשיר/דפדפן)
-    page_viewed VARCHAR(255),
-    session_data JSONB -- נתונים נוספים על המשתמש
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE UNIQUE,
+    chat_id BIGINT UNIQUE NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    connected_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
-
--- יצירת אינדקסים לשיפור ביצועים
-CREATE INDEX idx_access_time ON access_logs (access_time);
-CREATE INDEX idx_phone_number ON registered_users (phone_number);
