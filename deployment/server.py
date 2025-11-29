@@ -1,272 +1,194 @@
-# קובץ server.py
-# שרת Flask מאוחד: מטפל ב-Frontend, Backend, Admin, DB ו-Telegram Alerts
-
-from flask import Flask, request, jsonify, send_from_directory, session, redirect, url_for
-import psycopg2
-from psycopg2 import extras
+# deployment/server.py
 import os
-import json
-import requests
+from flask import Flask, request, render_template, redirect, url_for
+from flask_sqlalchemy import SQLAlchemy
+from flask_admin import Admin
+from flask_admin.contrib.sqla import ModelView
+from telegram import Bot, Update
+from telegram.ext import Dispatcher, CommandHandler, MessageHandler, filters
 from dotenv import load_dotenv
+from werkzeug.security import generate_password_hash
+import logging
+from threading import Thread
 
-# טעינת משתני סביבה מקובץ .env מקומי לפיתוח, ב-Railway נטענים אוטומטית
-load_dotenv() 
+# טעינת משתני סביבה מקובץ .env
+load_dotenv()
 
-app = Flask(__name__, static_folder='../src')
+# --- הגדרות ---
+# קריאת משתנים מתוך .env
+WEBHOOK_PATH = os.environ.get("TELEGRAM_WEBHOOK_PATH")
+BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+DATABASE_URL = os.environ.get("DATABASE_URL")
+SECRET_KEY = os.environ.get("SECRET_KEY")
+ADMIN_USER = os.environ.get("ADMIN_USER")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD")
+ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL")
 
-# --- תצורה ---
-app.secret_key = os.urandom(24) 
-# Railway מספקת DATABASE_URL באופן אוטומטי.
-DATABASE_URL = os.getenv("DATABASE_URL")
+# הגדרת Flask App (שימו לב לנתיבים לתיקיות templates ו-assets)
+app = Flask(__name__, template_folder='../templates', static_folder='../assets')
+app.config['SECRET_KEY'] = SECRET_KEY
+app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# הגדרות Telegram
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+db = SQLAlchemy(app)
+admin = Admin(app, name='לוח בקרה DDOS', template_mode='bootstrap4', url='/admin')
 
-# פרטי אדמין
-ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "ddos_admin")
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
-# ------------------
+# --- מודלים של DB (SQLAlchemy) ---
+class User(db.Model):
+    __tablename__ = 'users'
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True)
+    password_hash = db.Column(db.String(128), nullable=False)
+    is_admin = db.Column(db.Boolean, default=False)
+    
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+    
+    def __repr__(self): return f'<User {self.username}>'
 
-# --- פונקציות בסיס ---
+class UploadedData(db.Model):
+    __tablename__ = 'uploaded_data'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    data_type = db.Column(db.String(50), nullable=False)
+    data_content = db.Column(db.Text)
+    status = db.Column(db.String(20), default='Pending')
+    uploaded_at = db.Column(db.DateTime, default=db.func.current_timestamp())
 
-def get_db_connection():
-    # חיבור באמצעות DATABASE_URL שמספקת Railway
-    if not DATABASE_URL:
-        raise ConnectionError("DATABASE_URL is not set. Cannot connect to PostgreSQL.")
-    return psycopg2.connect(DATABASE_URL)
+class TelegramConnection(db.Model):
+    __tablename__ = 'telegram_connections'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), unique=True)
+    chat_id = db.Column(db.BigInteger, unique=True, nullable=False)
+    is_active = db.Column(db.Boolean, default=True)
 
-def send_telegram_alert(message):
+# --- הגדרות Admin Panel ---
+class SecureModelView(ModelView):
+    # כאן נדרש יישום של מערכת Login אמיתית
+    def is_accessible(self):
+        # בפרויקט אמיתי: יש להשתמש ב-Flask-Login/Security
+        return True 
+
+    def inaccessible_callback(self, name, **kwargs):
+        return redirect(url_for('index'))
+
+admin.add_view(SecureModelView(User, db.session, name='משתמשים'))
+admin.add_view(SecureModelView(UploadedData, db.session, name='נתונים שהועלו'))
+admin.add_view(SecureModelView(TelegramConnection, db.session, name='חיבורי טלגרם'))
+
+# --- לוגיקת בוט טלגרם (מבוסס webhook) ---
+# נשתמש בגישת Threading כדי לא לחסום את שרת ה-Flask (בפרודקשן מומלץ Async)
+try:
+    bot = Bot(BOT_TOKEN)
+    dispatcher = Dispatcher(bot, None, workers=0)
+
+    # Handlers
+    async def start_command(update, context):
+        """טיפול בפקודת /start"""
+        chat_id = update.message.chat_id
+        # דוגמה ללוגיקה: קישור משתמש אדמין חדש
+        with app.app_context():
+            conn = TelegramConnection.query.filter_by(chat_id=chat_id).first()
+            if not conn:
+                # מנסים לקשר למשתמש האדמין הראשי
+                system_user = User.query.filter_by(username=ADMIN_USER).first() 
+                if system_user:
+                     new_conn = TelegramConnection(user_id=system_user.id, chat_id=chat_id, is_active=True)
+                     db.session.add(new_conn)
+                     db.session.commit()
+                     await update.message.reply_text(f"ברוך הבא! הצ'אט שלך קושר למשתמש המנהל.")
+                     return
+            
+            if conn:
+                 await update.message.reply_text("אתה כבר מחובר למערכת DDOS.")
+            else:
+                 await update.message.reply_text("ברוך הבא לבוט DDOS! אנא בצע קישור למערכת דרך האתר.")
+
+    async def handle_message(update, context):
+        """טיפול בהודעות רגילות ושמירתן ב-DB"""
+        text = update.message.text
+        with app.app_context():
+            conn = TelegramConnection.query.filter_by(chat_id=update.message.chat_id).first()
+            if conn:
+                # שמירת הנתון בטבלת uploaded_data
+                new_data = UploadedData(
+                    user_id=conn.user_id,
+                    data_type='Telegram Message',
+                    data_content=text,
+                    status='Review'
+                )
+                db.session.add(new_data)
+                db.session.commit()
+                await update.message.reply_text(f"הנתון נשמר לבדיקה בלוח הבקרה! (id: {new_data.id})")
+            else:
+                 await update.message.reply_text("אנא התחל את הבוט מחדש עם /start ובצע קישור למערכת.")
+
+
+    dispatcher.add_handler(CommandHandler("start", start_command))
+    dispatcher.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
+    def run_dispatcher(update_json):
+        update = Update.de_json(update_json, bot)
+        # הרצת העיבוד ב-Thread נפרד
+        Thread(target=lambda: dispatcher.process_update(update)).start()
+
+except Exception as e:
+    logging.error(f"Failed to initialize Telegram Bot: {e}")
+
+# --- נתיבי Web/API ---
+@app.route('/', methods=['GET'])
+def index():
+    """דף הבית"""
+    return render_template('index.html', project_name='פרויקט DDOS/NDFS')
+
+@app.route(WEBHOOK_PATH, methods=['POST'])
+def telegram_webhook():
+    """הנקודה אליה טלגרם שולח עדכונים (WebHook)"""
+    if request.method == "POST":
+        if 'bot' in globals():
+            run_dispatcher(request.get_json())
+        return 'OK'
+    return 'Method Not Allowed', 405
+
+# --- פקודות CLI לאתחול (Flask CLI) ---
+@app.cli.command("init-db")
+def init_db_command():
+    """יוצרת את טבלאות ה-DB ומגדירה משתמש אדמין ראשי."""
+    with app.app_context():
+        db.create_all()
+        if User.query.filter_by(username=ADMIN_USER).first() is None:
+            admin_user = User(username=ADMIN_USER, email=ADMIN_EMAIL, is_admin=True)
+            admin_user.set_password(ADMIN_PASSWORD)
+            db.session.add(admin_user)
+            db.session.commit()
+            print(f"*** נוצר משתמש אדמין: {ADMIN_USER} עם סיסמה: {ADMIN_PASSWORD} ***")
+        print("מסד הנתונים אותחל בהצלחה.")
+
+@app.cli.command("set-webhook")
+def set_webhook_command():
+    """מגדירה את ה-Webhook בטלגרם. דורש כתובת URL ציבורית HTTPS."""
+    if not BOT_TOKEN:
+        print("שגיאה: BOT_TOKEN אינו מוגדר.")
+        return
+    
+    SERVER_URL = input("אנא הזן את כתובת ה-URL הציבורית המלאה של השרת (לדוגמה: https://yourdomain.com): ")
+    webhook_url = SERVER_URL.rstrip('/') + WEBHOOK_PATH
+    
     try:
-        if TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID:
-            url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-            payload = {
-                'chat_id': TELEGRAM_CHAT_ID,
-                'text': f"🔔 DDOS ALERT:\n{message}",
-                'parse_mode': 'Markdown'
-            }
-            response = requests.post(url, data=payload)
-            if response.status_code != 200:
-                print(f"Telegram failed. Status: {response.status_code}, Response: {response.text}")
+        import requests
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/setWebhook"
+        response = requests.post(url, json={'url': webhook_url})
+        
+        if response.json().get('ok'):
+            print(f"Webhook הוגדר בהצלחה לכתובת: {webhook_url}")
         else:
-            print("Telegram credentials missing. Alert skipped.")
+            print(f"שגיאה בהגדרת ה-Webhook: {response.json()}")
     except Exception as e:
-        print(f"Error sending Telegram alert: {e}")
-
-# --- ניתוב קבצים סטטיים ---
-# (נותר זהה: מגיש index.html, assets, וכו')
-@app.route('/')
-def serve_index():
-    return send_from_directory(app.static_folder, 'index.html')
-
-@app.route('/assets/<path:path>')
-def serve_assets(path):
-    return send_from_directory(os.path.join(os.getcwd(), 'assets'), path)
-
-@app.route('/src/<path:path>')
-def serve_src(path):
-    return send_from_directory(app.static_folder, path)
-
-# --- נקודות קצה (API) ---
-
-# 1. רישום משתמשים (טלפון)
-@app.route('/api/register', methods=['POST'])
-def register_user():
-    data = request.json
-    phone_number = data.get('phone')
-    if not phone_number: return jsonify({"error": "נדרש מספר טלפון"}), 400
-
-    conn = get_db_connection()
-    cur = conn.cursor()
-    try:
-        # הקוד משתמש ב-ON CONFLICT כדי למנוע כפילויות
-        cur.execute("INSERT INTO registered_users (phone_number) VALUES (%s) ON CONFLICT (phone_number) DO NOTHING RETURNING id;", (phone_number,))
-        new_id = cur.fetchone()
-        conn.commit()
-        
-        if new_id:
-            send_telegram_alert(f"New User Registered! Phone: {phone_number} (ID: {new_id[0]})")
-            return jsonify({"message": "רישום בוצע בהצלחה", "id": new_id[0]}), 201
-        else:
-            return jsonify({"message": "המספר כבר רשום"}), 200
-    except Exception as e:
-        print(f"Registration Error: {e}")
-        conn.rollback()
-        return jsonify({"error": "שגיאת שרת פנימית"}), 500
-    finally:
-        cur.close()
-        conn.close()
-
-# 2. קבלת פנייה לאדמין
-@app.route('/api/message', methods=['POST'])
-def receive_message():
-    data = request.json
-    name = data.get('name', 'Anon')
-    email = data.get('email', 'N/A')
-    message_body = data.get('message')
-    
-    if not message_body: return jsonify({"error": "חסר תוכן הודעה"}), 400
-
-    conn = get_db_connection()
-    cur = conn.cursor()
-    try:
-        cur.execute("INSERT INTO messages (sender_name, sender_email, content, ip_address) VALUES (%s, %s, %s, %s) RETURNING id;", 
-                    (name, email, message_body, request.remote_addr))
-        message_id = cur.fetchone()[0]
-        conn.commit()
-        
-        # התראת טלגרם על הודעה חדשה
-        alert_msg = (f"New Admin Message (ID: {message_id})\n"
-                     f"Sender: {name} ({email})\n"
-                     f"Content: {message_body[:50]}...")
-        send_telegram_alert(alert_msg)
-        
-        return jsonify({"message": "הודעה נשלחה בהצלחה לאדמין"}), 201
-    except Exception as e:
-        print(f"Message Error: {e}")
-        conn.rollback()
-        return jsonify({"error": "שגיאת שרת פנימית"}), 500
-    finally:
-        cur.close()
-        conn.close()
-
-# 3. לוג כניסה וצפייה (חוק 13)
-@app.route('/api/log_entry', methods=['POST'])
-def log_entry():
-    ip_address = request.remote_addr
-    # ... (שאר לוגיקת הלוגינג נותרה זהה) ...
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        
-        cur.execute("""
-            INSERT INTO access_logs (ip_address, user_agent, page_viewed, session_data)
-            VALUES (%s, %s, %s, %s)
-        """, (ip_address, request.headers.get('User-Agent'), request.path, json.dumps(dict(request.headers))))
-        
-        conn.commit()
-        return jsonify({"message": "Entry logged"}), 200
-    except Exception as e:
-        print(f"Logging Error: {e}")
-        conn.rollback()
-        return jsonify({"error": "שגיאת לוגינג"}), 500
-    finally:
-        cur.close()
-        conn.close()
-
-# 4. סטטיסטיקות האתר
-@app.route('/api/stats', methods=['GET'])
-def get_stats():
-    # ... (הקוד נותר זהה) ...
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        
-        cur.execute("SELECT COUNT(*) FROM registered_users;")
-        registered_users = cur.fetchone()[0]
-        cur.execute("SELECT COUNT(*) FROM access_logs;")
-        total_views = cur.fetchone()[0]
-        
-        return jsonify({"registered_users": registered_users, "total_views": total_views}), 200
-    except Exception as e:
-        print(f"Stats Error: {e}")
-        return jsonify({"registered_users": 0, "total_views": 0}), 500
-    finally:
-        cur.close()
-        conn.close()
+        print(f"שגיאה כללית בהגדרת Webhook: {e}")
 
 
-# --- ממשק אדמין (נשאר זהה) ---
-# ... (ניתובים admin, admin_login, admin_logout, ופונקציות העזר נשארים זהים לגרסה הקודמת) ...
-@app.route('/admin')
-def admin_page():
-    if 'logged_in' not in session:
-        return serve_admin_login()
-    
-    conn = get_db_connection()
-    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-    try:
-        cur.execute("SELECT * FROM messages ORDER BY access_time DESC;")
-        messages = cur.fetchall()
-        cur.execute("SELECT * FROM registered_users ORDER BY registration_date DESC;")
-        users = cur.fetchall()
-        
-        return generate_admin_html(messages, users)
-    except Exception as e:
-        print(f"Admin DB Error: {e}")
-        return "שגיאה בטעינת נתונים.", 500
-    finally:
-        cur.close()
-        conn.close()
-
-@app.route('/admin/login', methods=['POST'])
-def admin_login():
-    data = request.form
-    username = data.get('username')
-    password = data.get('password')
-
-    if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
-        session['logged_in'] = True
-        return redirect(url_for('admin_page'))
-    else:
-        return serve_admin_login("שם משתמש או סיסמה שגויים.")
-
-@app.route('/admin/logout')
-def admin_logout():
-    session.pop('logged_in', None)
-    return redirect(url_for('serve_index'))
-
-
-def serve_admin_login(error=None):
-    # הצגת טופס לוגין פשוט
-    html = f"""
-    <!DOCTYPE html><html lang="he" dir="rtl"><head><title>Admin Login</title><link rel="stylesheet" href="/assets/style.css"></head>
-    <body style="text-align: center; padding-top: 50px; background-color: #121212; color: white;">
-    <div style="max-width: 400px; margin: auto; background: #1e1e1e; padding: 30px; border-radius: 10px; border: 1px solid #673ab7;">
-    <h2>כניסת מנהל DDOS</h2>
-    {f'<p style="color: red;">{error}</p>' if error else ''}
-    <form method="POST" action="/admin/login">
-        <input type="text" name="username" placeholder="שם משתמש" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #00bcd4; background: #333; color: white; border-radius: 5px;"><br>
-        <input type="password" name="password" placeholder="סיסמה" required style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #00bcd4; background: #333; color: white; border-radius: 5px;"><br>
-        <button type="submit" style="padding: 10px 20px; background-color: #00bcd4; color: black; border: none; border-radius: 5px; cursor: pointer;">התחבר</button>
-    </form>
-    </div></body></html>
-    """
-    return html
-
-def generate_admin_html(messages, users):
-    # יצירת ממשק אדמין בסיסי
-    message_rows = "".join([f"<tr><td>{m['id']}</td><td>{m['sender_name']} ({m['sender_email']})</td><td>{m['content']}</td><td>{m['access_time'].strftime('%Y-%m-%d %H:%M')}</td><td>{m['ip_address']}</td></tr>" for m in messages])
-    user_rows = "".join([f"<tr><td>{u['id']}</td><td>{u['phone_number']}</td><td>{u['registration_date'].strftime('%Y-%m-%d %H:%M')}</td></tr>" for u in users])
-
-    html = f"""
-    <!DOCTYPE html><html lang="he" dir="rtl"><head><title>DDOS Admin Panel</title><link rel="stylesheet" href="/assets/style.css"></head>
-    <body style="padding: 20px; background-color: #121212; color: white;">
-    <h1 style="color: #00bcd4; border-bottom: 2px solid #673ab7; padding-bottom: 10px;">DDOS | לוח בקרה למנהל</h1>
-    <a href="/admin/logout" style="float: left; color: red;">התנתק</a>
-    
-    <h2>1. פניות חדשות ({len(messages)})</h2>
-    <table border="1" style="width: 100%; text-align: right; border-collapse: collapse; margin-bottom: 40px; background-color: #1e1e1e;">
-        <tr><th>ID</th><th>שולח</th><th>תוכן</th><th>זמן קבלה</th><th>IP</th></tr>
-        {message_rows}
-    </table>
-
-    <h2>2. משתמשים רשומים ({len(users)})</h2>
-    <table border="1" style="width: 100%; text-align: right; border-collapse: collapse; background-color: #1e1e1e;">
-        <tr><th>ID</th><th>מספר טלפון</th><th>תאריך רישום</th></tr>
-        {user_rows}
-    </table>
-    
-    <footer><p style="text-align: center; margin-top: 50px;">זכור: הפרויקט מופעל על Railway ומחובר אוטומטית ל-PostgreSQL.</p></footer>
-    </body></html>
-    """
-    return html
-
-
-# הוספנו תנאי הרצה מקומי שימושי לפיתוח (לא קריטי ל-Railway)
 if __name__ == '__main__':
-    @app.route('/assets/<path:path>')
-    def serve_assets_dev(path):
-        return send_from_directory(os.path.join(os.getcwd(), 'assets'), path)
-    
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # הרצה מקומית לצורך בדיקה (לא מתאים לפרודקשן)
+    # הערה: Webhook לא יעבוד בסביבה מקומית ללא מנהרת SSL (כגון ngrok).
+    app.run(host='0.0.0.0', port=5000)
