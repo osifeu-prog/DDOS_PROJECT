@@ -1,7 +1,0 @@
-flask
-flask-sqlalchemy
-flask-admin
-python-telegram-bot
-psycopg2-binary  # מתאם ל-PostgreSQL
-gunicorn         # שרת WSGI לפריסה בפרודקשן
-python-dotenv    # לטעינת משתני סביבה (.env)
