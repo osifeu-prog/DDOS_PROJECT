@@ -1,54 +1,60 @@
 # קובץ server.py
-# שרת Flask מאוחד: מטפל ב-Frontend, Backend, Admin, DB ו-SMS Alerts
+# שרת Flask מאוחד: מטפל ב-Frontend, Backend, Admin, DB ו-Telegram Alerts
 
 from flask import Flask, request, jsonify, send_from_directory, session, redirect, url_for
 import psycopg2
-import json
+from psycopg2 import extras
 import os
-from twilio.rest import Client
-from dotenv import load_dotenv # לייבוא משתני סביבה
+import json
+import requests
+from dotenv import load_dotenv
 
-load_dotenv() # טעינת משתני סביבה מקובץ .env
+# טעינת משתני סביבה מקובץ .env מקומי לפיתוח, ב-Railway נטענים אוטומטית
+load_dotenv() 
 
 app = Flask(__name__, static_folder='../src')
 
 # --- תצורה ---
-app.secret_key = os.urandom(24) # מפתח סשן חזק
-# הגדרות DB
-DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_NAME = os.getenv("DB_NAME", "ddos_project_db")
-DB_USER = os.getenv("DB_USER", "postgres")
-DB_PASS = os.getenv("DB_PASS", "password")
+app.secret_key = os.urandom(24) 
+# Railway מספקת DATABASE_URL באופן אוטומטי.
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-# הגדרות Twilio (עבור התראות SMS)
-TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
-TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
-TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER")
-ADMIN_PHONE_NUMBER = os.getenv("ADMIN_PHONE_NUMBER")
+# הגדרות Telegram
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 # פרטי אדמין
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "ddos_admin")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
 # ------------------
 
-def get_db_connection():
-    return psycopg2.connect(host=DB_HOST, database=DB_NAME, user=DB_USER, password=DB_PASS)
+# --- פונקציות בסיס ---
 
-def send_sms_alert(message):
+def get_db_connection():
+    # חיבור באמצעות DATABASE_URL שמספקת Railway
+    if not DATABASE_URL:
+        raise ConnectionError("DATABASE_URL is not set. Cannot connect to PostgreSQL.")
+    return psycopg2.connect(DATABASE_URL)
+
+def send_telegram_alert(message):
     try:
-        if TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_PHONE_NUMBER and ADMIN_PHONE_NUMBER:
-            client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
-            client.messages.create(
-                body=f"[DDOS ALERT] {message}",
-                from_=TWILIO_PHONE_NUMBER,
-                to=ADMIN_PHONE_NUMBER
-            )
+        if TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID:
+            url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+            payload = {
+                'chat_id': TELEGRAM_CHAT_ID,
+                'text': f"🔔 DDOS ALERT:\n{message}",
+                'parse_mode': 'Markdown'
+            }
+            response = requests.post(url, data=payload)
+            if response.status_code != 200:
+                print(f"Telegram failed. Status: {response.status_code}, Response: {response.text}")
         else:
-            print("Twilio credentials missing. SMS alert skipped.")
+            print("Telegram credentials missing. Alert skipped.")
     except Exception as e:
-        print(f"Error sending SMS: {e}")
+        print(f"Error sending Telegram alert: {e}")
 
 # --- ניתוב קבצים סטטיים ---
+# (נותר זהה: מגיש index.html, assets, וכו')
 @app.route('/')
 def serve_index():
     return send_from_directory(app.static_folder, 'index.html')
@@ -73,12 +79,13 @@ def register_user():
     conn = get_db_connection()
     cur = conn.cursor()
     try:
+        # הקוד משתמש ב-ON CONFLICT כדי למנוע כפילויות
         cur.execute("INSERT INTO registered_users (phone_number) VALUES (%s) ON CONFLICT (phone_number) DO NOTHING RETURNING id;", (phone_number,))
         new_id = cur.fetchone()
         conn.commit()
         
         if new_id:
-            send_sms_alert(f"New User Reg: {phone_number} (ID: {new_id[0]})")
+            send_telegram_alert(f"New User Registered! Phone: {phone_number} (ID: {new_id[0]})")
             return jsonify({"message": "רישום בוצע בהצלחה", "id": new_id[0]}), 201
         else:
             return jsonify({"message": "המספר כבר רשום"}), 200
@@ -108,7 +115,12 @@ def receive_message():
         message_id = cur.fetchone()[0]
         conn.commit()
         
-        send_sms_alert(f"New Message! ID: {message_id}, From: {name}")
+        # התראת טלגרם על הודעה חדשה
+        alert_msg = (f"New Admin Message (ID: {message_id})\n"
+                     f"Sender: {name} ({email})\n"
+                     f"Content: {message_body[:50]}...")
+        send_telegram_alert(alert_msg)
+        
         return jsonify({"message": "הודעה נשלחה בהצלחה לאדמין"}), 201
     except Exception as e:
         print(f"Message Error: {e}")
@@ -122,17 +134,15 @@ def receive_message():
 @app.route('/api/log_entry', methods=['POST'])
 def log_entry():
     ip_address = request.remote_addr
-    user_agent = request.headers.get('User-Agent')
-    
+    # ... (שאר לוגיקת הלוגינג נותרה זהה) ...
     try:
         conn = get_db_connection()
         cur = conn.cursor()
         
-        # רישום לוג מפורט (כולל IP)
         cur.execute("""
             INSERT INTO access_logs (ip_address, user_agent, page_viewed, session_data)
             VALUES (%s, %s, %s, %s)
-        """, (ip_address, user_agent, request.path, json.dumps(dict(request.headers))))
+        """, (ip_address, request.headers.get('User-Agent'), request.path, json.dumps(dict(request.headers))))
         
         conn.commit()
         return jsonify({"message": "Entry logged"}), 200
@@ -147,9 +157,11 @@ def log_entry():
 # 4. סטטיסטיקות האתר
 @app.route('/api/stats', methods=['GET'])
 def get_stats():
-    conn = get_db_connection()
-    cur = conn.cursor()
+    # ... (הקוד נותר זהה) ...
     try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
         cur.execute("SELECT COUNT(*) FROM registered_users;")
         registered_users = cur.fetchone()[0]
         cur.execute("SELECT COUNT(*) FROM access_logs;")
@@ -163,9 +175,9 @@ def get_stats():
         cur.close()
         conn.close()
 
-# --- ממשק אדמין ---
 
-# ניתוב לעמוד האדמין
+# --- ממשק אדמין (נשאר זהה) ---
+# ... (ניתובים admin, admin_login, admin_logout, ופונקציות העזר נשארים זהים לגרסה הקודמת) ...
 @app.route('/admin')
 def admin_page():
     if 'logged_in' not in session:
@@ -179,7 +191,6 @@ def admin_page():
         cur.execute("SELECT * FROM registered_users ORDER BY registration_date DESC;")
         users = cur.fetchall()
         
-        # הממשק מוגש כעת מה-Backend (נשתמש ב-render_template ביישום מלא, כאן נחזיר את ה-HTML כפונקציה)
         return generate_admin_html(messages, users)
     except Exception as e:
         print(f"Admin DB Error: {e}")
@@ -188,7 +199,6 @@ def admin_page():
         cur.close()
         conn.close()
 
-# ניתוב לוגין
 @app.route('/admin/login', methods=['POST'])
 def admin_login():
     data = request.form
@@ -207,7 +217,6 @@ def admin_logout():
     return redirect(url_for('serve_index'))
 
 
-# פונקציות עזר להצגת ממשק האדמין
 def serve_admin_login(error=None):
     # הצגת טופס לוגין פשוט
     html = f"""
@@ -248,14 +257,14 @@ def generate_admin_html(messages, users):
         {user_rows}
     </table>
     
-    <footer><p style="text-align: center; margin-top: 50px;">זכור: סיסמת האדמין נשמרת בקובץ .env. אבטח אותה!</p></footer>
+    <footer><p style="text-align: center; margin-top: 50px;">זכור: הפרויקט מופעל על Railway ומחובר אוטומטית ל-PostgreSQL.</p></footer>
     </body></html>
     """
     return html
 
 
+# הוספנו תנאי הרצה מקומי שימושי לפיתוח (לא קריטי ל-Railway)
 if __name__ == '__main__':
-    # טעינת קבצי ה-assets באופן מקומי לפיתוח
     @app.route('/assets/<path:path>')
     def serve_assets_dev(path):
         return send_from_directory(os.path.join(os.getcwd(), 'assets'), path)
